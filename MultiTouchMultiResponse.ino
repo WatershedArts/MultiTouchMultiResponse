@@ -6,12 +6,20 @@
 
 #include <MPR121.h>
 #include <Wire.h>
+#include <Servo.h>
 
 #define NUMBER_OF_ELECTRODES 12
 
 // These are the variables you can change!
 #define TOUCH_THRESHOLD 40
 #define RELEASE_THRESHOLD 20
+
+#define SERVO_MIN_ANGLE 0
+#define SERVO_MAX_ANGLE 180
+
+// Objects
+Servo servo;
+bool servoLatch = false;
 
 //----------------------------------------------------
 // *
@@ -32,6 +40,8 @@ void setup() {
 
     // As it Sounds 
     setupTouchBoard();
+
+    servo.attach(9);
 }
 
 //----------------------------------------------------
@@ -101,5 +111,45 @@ void loop() {
         // 1: SWITCH
         // 2: TOGGLE
         // 3: LOOP
+        // Group One: SERVO : SWITCH
+        
+        if(MPR121.isNewTouch(0)) {
+            servo.write(SERVO_MAX_ANGLE);
+            Serial.println("SERVO SWITCH ON");
+        }
+        else if(MPR121.isNewRelease(0)) {
+            servo.write(SERVO_MIN_ANGLE);
+            Serial.println("SERVO SWITCH OFF");
+        }
+
+        // Group One: SERVO : TOGGLE
+        if(MPR121.isNewTouch(1)) {
+            if(!servoLatch) {
+                servo.write(SERVO_MAX_ANGLE);
+                Serial.println("SERVO TOGGLE ON");
+                servoLatch = true;
+            }
+            else if(servoLatch) {
+                servo.write(SERVO_MIN_ANGLE);
+                Serial.println("SERVO TOGGLE OFF");
+                servoLatch = false;
+            }
+        }
+
+        // Group One: SERVO : LOOP
+        if(MPR121.isNewTouch(2)) {
+            Serial.println("SERVO LOOP STARTED");
+            for(int angle = SERVO_MIN_ANGLE; angle < SERVO_MAX_ANGLE; angle++) {
+                servo.write(angle);
+                delay(5);
+            }
+            delay(100);
+
+            for(int angle = SERVO_MAX_ANGLE; angle > SERVO_MIN_ANGLE; angle--) {
+                servo.write(angle);
+                delay(5);
+            }
+            Serial.println("SERVO LOOP FINISHED");
+        }
     }
 }
