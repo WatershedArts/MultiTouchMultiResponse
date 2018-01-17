@@ -8,6 +8,13 @@
 #include <Wire.h>
 #include <Servo.h>
 
+#include <SPI.h>
+#include <SdFat.h>
+#include <SdFatUtil.h> 
+#include <SFEMP3Shield.h>
+
+
+
 #define NUMBER_OF_ELECTRODES 12
 
 // These are the variables you can change!
@@ -17,9 +24,19 @@
 #define SERVO_MIN_ANGLE 0
 #define SERVO_MAX_ANGLE 180
 
+#define TRACK_NAME "track1.mp3"
+
 // Objects
 Servo servo;
 bool servoLatch = false;
+
+bool mp3Latch = false;
+SFEMP3Shield MP3player;
+byte result;
+int lastPlayed = 0;
+
+// sd card instantiation
+SdFat sd;
 
 //----------------------------------------------------
 // *
@@ -42,6 +59,25 @@ void setup() {
     setupTouchBoard();
 
     servo.attach(9);
+}
+
+//----------------------------------------------------
+// *
+// * Setup the MP3 Player
+// * 
+//----------------------------------------------------
+void setupMP3Player() {
+
+    if(!sd.begin(SD_SEL, SPI_HALF_SPEED)) sd.initErrorHalt();
+
+    result = MP3player.begin();
+    MP3player.setVolume(10,10);
+
+    if(result != 0) {
+        Serial.print("Error code: ");
+        Serial.print(result);
+        Serial.println(" When trying to start MP3 player");
+    }
 }
 
 //----------------------------------------------------
@@ -111,8 +147,8 @@ void loop() {
         // 1: SWITCH
         // 2: TOGGLE
         // 3: LOOP
-        // Group One: SERVO : SWITCH
         
+        // Group One: SERVO : SWITCH
         if(MPR121.isNewTouch(0)) {
             servo.write(SERVO_MAX_ANGLE);
             Serial.println("SERVO SWITCH ON");
@@ -150,6 +186,38 @@ void loop() {
                 delay(5);
             }
             Serial.println("SERVO LOOP FINISHED");
+        }
+
+        // Group Two: MP3 : SWITCH
+        if(MPR121.isNewTouch(3)) {
+            if(MP3player.isPlaying()) {
+                MP3player.stopTrack();
+            }
+            else {
+                MP3player.playTrack(1);
+            }
+
+            Serial.println("MP3 SWITCH ON");
+        }
+        else if(MPR121.isNewRelease(3)) {
+            if(MP3player.isPlaying()) {
+                MP3player.stopTrack();
+            }
+            Serial.println("MP3 SWITCH OFF");
+        }
+
+        // Group Two: MP3 : TOGGLE
+        if(MPR121.isNewTouch(4)) {
+            if(!mp3Latch) {
+                MP3player.playTrack(1);
+                Serial.println("MP3 TOGGLE ON");
+                mp3Latch = true;
+            }
+            else if(mp3Latch) {
+                MP3player.stopTrack();
+                Serial.println("MP3 TOGGLE OFF");
+                mp3Latch = false;
+            }
         }
     }
 }
